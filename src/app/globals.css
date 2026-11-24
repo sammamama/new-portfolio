@@ -1,26 +1,187 @@
 @import "tailwindcss";
 
+/*
+ * ─────────────────────────────────────────────────────────────
+ *  Meadow — design tokens
+ *  Primary: tarn (the lake blue). Secondary: ink (all type + UI).
+ *  Flower hues live only inside the meadow.
+ * ─────────────────────────────────────────────────────────────
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* surfaces */
+  --paper: #fbfbf8;
+  --paper-sunk: #f3f2ec;
+  --line: #e4e2da;
+
+  /* ink (secondary) */
+  --ink: #0b0b0c;
+  --ink-soft: #4a4a4f;
+  --ink-faint: #8b8a86;
+
+  /* tarn (primary) */
+  --tarn: #1f4fd8;
+  --tarn-deep: #1238b8;
+  --tarn-bright: #4d7cf0;
+  --tarn-mist: #dfe7fd;
+
+  /* illustration-only accents */
+  --marigold: #f2771b;
+  --pollen: #f2b705;
+  --bloom: #ec4f8f;
+  --moss: #24502f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-tarn: var(--tarn);
+  --color-tarn-deep: var(--tarn-deep);
+  --color-tarn-bright: var(--tarn-bright);
+  --color-tarn-mist: var(--tarn-mist);
+  --color-marigold: var(--marigold);
+  --color-pollen: var(--pollen);
+  --color-bloom: var(--bloom);
+  --color-moss: var(--moss);
+
+  --font-hand: var(--font-hand-face);
+  --font-display: var(--font-display-face);
+  --font-pixel: var(--font-pixel-face), var(--font-display-face), serif;
+  --font-serif: var(--font-serif-face);
+  --font-mono: var(--font-mono-face);
+  --font-geist-mono: var(--font-geist-mono-face), ui-monospace, monospace;
+
+  /* type scale (fluid) */
+  --text-hand: clamp(3.5rem, 9vw, 8.5rem);
+  --text-display: clamp(2.75rem, 6vw, 5.5rem);
+  --text-title: clamp(1.75rem, 3.2vw, 2.75rem);
+  --text-lede: clamp(1.25rem, 1.8vw, 1.6rem);
+  --text-label: 0.72rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--paper);
+  color: var(--ink);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-serif-face), Georgia, serif;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--tarn);
+  color: var(--paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--tarn);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* mono eyebrow label, e.g. "(02) work" */
+.label {
+  font-family: var(--font-mono-face), ui-monospace, monospace;
+  font-size: var(--text-label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* underline that grows on hover, ink → tarn */
+.link {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.35s ease, color 0.2s ease;
+}
+.link:hover {
+  background-size: 100% 1px;
+  color: var(--tarn);
+}
+
+/*
+ * Clouds: pixel clouds drift left → right across the sky and loop.
+ * Set --dur, --delay (negative to start mid-way) and --rest (position under reduced motion) per cloud.
+ */
+.cloud-drift {
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation: cloud-drift var(--dur, 120s) linear var(--delay, 0s) infinite;
+}
+@keyframes cloud-drift {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100vw);
+  }
+}
+
+/*
+ * Shine: a thin paper-white line that sweeps left → right through the type, then rests.
+ * It's an overlay copy of the text (needs data-text) masked by two gradients, intersected:
+ *  1. a thin slanted band with soft sides (animated across);
+ *  2. a vertical profile over the middle 60% of the line: solid in its top half,
+ *     fading to nothing over its bottom half.
+ */
+.shine {
+  position: relative;
+}
+.shine::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: var(--paper);
+  pointer-events: none;
+  -webkit-mask-image:
+    linear-gradient(105deg, transparent 0%, transparent 48.6%, #000 50%, transparent 51.4%, transparent 100%),
+    linear-gradient(to bottom, transparent 20%, rgb(0 0 0 / 0.65) 20%, rgb(0 0 0 / 0.65) 50%, transparent 80%);
+  mask-image:
+    linear-gradient(105deg, transparent 0%, transparent 48.6%, #000 50%, transparent 51.4%, transparent 100%),
+    linear-gradient(to bottom, transparent 20%, rgb(0 0 0 / 0.65) 20%, rgb(0 0 0 / 0.65) 50%, transparent 80%);
+  -webkit-mask-size: 300% 100%, 100% 100%;
+  mask-size: 300% 100%, 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 100% 0, 0 0;
+  mask-position: 100% 0, 0 0;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  animation: shine 6s ease-in-out infinite;
+}
+@keyframes shine {
+  0% {
+    -webkit-mask-position: 100% 0, 0 0;
+    mask-position: 100% 0, 0 0;
+  }
+  65%,
+  100% {
+    -webkit-mask-position: 0% 0, 0 0;
+    mask-position: 0% 0, 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .shine::after {
+    display: none;
+  }
+  .cloud-drift {
+    animation: none;
+    transform: translateX(var(--rest, 10vw));
+  }
 }
