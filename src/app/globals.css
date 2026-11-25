@@ -28,6 +28,7 @@
   --marigold: #f2771b;
   --pollen: #f2b705;
   --bloom: #ec4f8f;
+  --blush: #f39bc2;
   --moss: #24502f;
 }
 
@@ -45,6 +46,7 @@
   --color-marigold: var(--marigold);
   --color-pollen: var(--pollen);
   --color-bloom: var(--bloom);
+  --color-blush: var(--blush);
   --color-moss: var(--moss);
 
   --font-hand: var(--font-hand-face);
@@ -56,9 +58,9 @@
 
   /* type scale (fluid) */
   --text-hand: clamp(3.5rem, 9vw, 8.5rem);
-  --text-display: clamp(2.75rem, 6vw, 5.5rem);
-  --text-title: clamp(1.75rem, 3.2vw, 2.75rem);
-  --text-lede: clamp(1.25rem, 1.8vw, 1.6rem);
+  --text-display: clamp(2.25rem, 6vw, 5.5rem);
+  --text-title: clamp(1.375rem, 3.2vw, 2.75rem);
+  --text-lede: clamp(1rem, 1.8vw, 1.6rem);
   --text-label: 0.72rem;
 }
 
@@ -72,9 +74,14 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-serif-face), Georgia, serif;
-  font-size: 1.125rem;
+  font-size: 1rem; /* phones; 1.125rem from md */
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+@media (min-width: 48rem) {
+  body {
+    font-size: 1.125rem;
+  }
 }
 
 ::selection {
@@ -130,6 +137,153 @@ body {
 }
 
 /*
+ * Pixel frame: a chunky 8-bit border with notched (missing) corner pixels, drawn with four hard
+ * box-shadows outside the box. Set --px (pixel size) and --frame (colour) per use.
+ */
+.pixel-frame {
+  --px: 4px;
+  --frame: var(--tarn-deep);
+  box-shadow:
+    0 calc(-1 * var(--px)) 0 0 var(--frame),
+    0 var(--px) 0 0 var(--frame),
+    calc(-1 * var(--px)) 0 0 0 var(--frame),
+    var(--px) 0 0 0 var(--frame);
+}
+
+/*
+ * Shade masks: the meadow's block patterns ░ (25%) ▒ (50%) ▓ (75%) as 4 × 4 tiles, plus an empty one.
+ * Used at 2px per pattern pixel (mask-size 8px). Same dot layout as the meadow shader's shade().
+ */
+:root {
+  --shade-0: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'/%3E");
+  --shade-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1H0zM2 0h1v1H2zM1 2h1v1H1zM3 2h1v1H3z'/%3E%3C/svg%3E");
+  --shade-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1H0zM2 0h1v1H2zM1 1h1v1H1zM3 1h1v1H3zM0 2h1v1H0zM2 2h1v1H2zM1 3h1v1H1zM3 3h1v1H3z'/%3E%3C/svg%3E");
+  --shade-3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h1v1H1zM3 0h1v1H3zM0 1h4v1H0zM0 2h1v1H0zM2 2h1v1H2zM0 3h4v1H0z'/%3E%3C/svg%3E");
+  --shade-4: linear-gradient(#000, #000);
+}
+
+/*
+ * Pixel build-in: hero layers appear the way the meadow does, empty → ░ → ▒ → ▓ → █, in hard steps,
+ * once the loader has gone (`data-revealed` on the section). Stagger with --in-delay.
+ * A mask clips to the box, so put it on a wrapper that holds everything the layer draws.
+ */
+.pixel-in {
+  -webkit-mask-image: var(--shade-0);
+  mask-image: var(--shade-0);
+  -webkit-mask-size: 8px 8px;
+  mask-size: 8px 8px;
+}
+[data-revealed] .pixel-in,
+[data-hero-cached] .pixel-in {
+  /* cached pages start at first paint, before any JS; the shared value means no restart on reveal */
+  animation: pixel-in 0.6s step-end var(--in-delay, 0s) both;
+}
+@keyframes pixel-in {
+  0% {
+    -webkit-mask-image: var(--shade-0);
+    mask-image: var(--shade-0);
+  }
+  20% {
+    -webkit-mask-image: var(--shade-1);
+    mask-image: var(--shade-1);
+  }
+  40% {
+    -webkit-mask-image: var(--shade-2);
+    mask-image: var(--shade-2);
+  }
+  60% {
+    -webkit-mask-image: var(--shade-3);
+    mask-image: var(--shade-3);
+  }
+  80% {
+    -webkit-mask-image: var(--shade-4);
+    mask-image: var(--shade-4);
+  }
+  100% {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/*
+ * Pixel loader: meadow cells (2 × the meadow's 5 × 9) in tarn, pulsing ░ ▒ ▓ █ ▓ ▒ ░ in a wave.
+ * When the hero is ready the whole loader dissolves █ → ▓ → ▒ → ░ → empty (`data-leaving`).
+ */
+.pixel-loader-cell {
+  display: block;
+  width: 10px;
+  height: 18px;
+  background: var(--tarn);
+  -webkit-mask-size: 8px 8px;
+  mask-size: 8px 8px;
+  animation: shade-pulse 1.2s step-end infinite both;
+}
+@keyframes shade-pulse {
+  0%,
+  100% {
+    -webkit-mask-image: var(--shade-0);
+    mask-image: var(--shade-0);
+  }
+  12.5%,
+  87.5% {
+    -webkit-mask-image: var(--shade-1);
+    mask-image: var(--shade-1);
+  }
+  25%,
+  75% {
+    -webkit-mask-image: var(--shade-2);
+    mask-image: var(--shade-2);
+  }
+  37.5%,
+  62.5% {
+    -webkit-mask-image: var(--shade-3);
+    mask-image: var(--shade-3);
+  }
+  50% {
+    -webkit-mask-image: var(--shade-4);
+    mask-image: var(--shade-4);
+  }
+}
+/* assets already cached (set before first paint by the head script in layout.tsx): no loader */
+[data-hero-cached] .pixel-loader {
+  display: none;
+}
+.pixel-loader[data-leaving] {
+  -webkit-mask-size: 8px 8px;
+  mask-size: 8px 8px;
+  animation: pixel-out 0.4s step-end forwards;
+}
+@keyframes pixel-out {
+  0% {
+    -webkit-mask-image: var(--shade-4);
+    mask-image: var(--shade-4);
+  }
+  25% {
+    -webkit-mask-image: var(--shade-3);
+    mask-image: var(--shade-3);
+  }
+  50% {
+    -webkit-mask-image: var(--shade-2);
+    mask-image: var(--shade-2);
+  }
+  75%,
+  100% {
+    -webkit-mask-image: var(--shade-1);
+    mask-image: var(--shade-1);
+  }
+}
+
+/* Menu cursor: the work menu's pixel ▶ blinks on and off, hard steps like an old game. */
+.cursor-blink {
+  animation: cursor-blink 1.1s steps(1) infinite;
+}
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/*
  * Shine: a thin paper-white line that sweeps left → right through the type, then rests.
  * It's an overlay copy of the text (needs data-text) masked by two gradients, intersected:
  *  1. a thin slanted band with soft sides (animated across);
@@ -180,8 +334,23 @@ body {
   .shine::after {
     display: none;
   }
+  .cursor-blink {
+    animation: none;
+  }
   .cloud-drift {
     animation: none;
     transform: translateX(var(--rest, 10vw));
+  }
+  /* no build-in: layers simply appear once the hero is ready; the loader holds still at ▒ */
+  [data-revealed] .pixel-in,
+  [data-hero-cached] .pixel-in {
+    animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .pixel-loader-cell {
+    animation: none;
+    -webkit-mask-image: var(--shade-2);
+    mask-image: var(--shade-2);
   }
 }

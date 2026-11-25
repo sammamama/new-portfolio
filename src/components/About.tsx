@@ -1,47 +1,64 @@
-const stack = [
-  ["Front", "Next.js, React, TypeScript, Tailwind, Framer Motion"],
-  ["Back", "Node.js, Prisma, Postgres, MongoDB"],
-  ["Also", "Three.js, Solana / Web3, Stripe, auth"],
-];
+import { skills } from "@/lib/content";
+import PixelScene from "./PixelScene";
 
 export default function About() {
   return (
-    <section id="about" className="bg-paper-sunk">
-      <div className="mx-auto grid max-w-[1400px] gap-12 px-6 py-28 md:grid-cols-[1fr_2fr] md:px-10 md:py-40">
-        <div>
-          <span className="label">(02) — about</span>
-          <p aria-hidden className="mt-6 font-mono text-sm leading-tight text-tarn">
-            ~ ~~ ~ ~~~ ~
-            <br />
-            &nbsp;~~ ~ ~~ ~
-          </p>
+    <section id="about" className="px-6 pt-28 md:px-10 md:pt-40">
+      {/* side by side from xl: the text column stretches to the square's height, skills pinned to its bottom edge */}
+      <div className="grid gap-12 xl:grid-cols-[5fr_7fr] xl:gap-16">
+        <div className="w-full min-w-0 max-w-xl xl:max-w-none">
+          <PixelScene scene="sunset">
+            <h2 className="absolute top-5 left-6 font-display text-[length:var(--text-display)] leading-none text-paper italic md:top-7 md:left-8">
+              About
+            </h2>
+          </PixelScene>
         </div>
 
-        <div>
-          <p className="font-display text-[length:var(--text-title)] leading-[1.2]">
-            I&apos;m Samridh — most people call me Sam. I build web apps end to end, and I care most about the part
-            people actually touch: <em className="text-tarn">how it feels</em>.
-          </p>
-          <div className="mt-10 max-w-[60ch] space-y-5 text-ink-soft">
-            <p>
-              Right now I&apos;m growing Adore You, a small product for gifting songs. Before that I shipped sites for
-              an architecture studio, a musician and a restaurant, plus a handful of side projects I made simply
-              because they were fun to build.
+        <div className="flex min-w-0 flex-col justify-between gap-6">
+          <div>
+            <p className="font-display text-[length:var(--text-title)] leading-[1.15] italic">
+              I find ways to express myself; creating with tech is what I am
+              most skilled at.
             </p>
-            <p>
-              I&apos;m looking for a full-stack or front-end role on a team that sweats the details — where I can
-              own features from schema to the last hover state.
-            </p>
+            <div className="mt-5 space-y-3 font-geist-mono text-sm leading-[1.7] md:text-base">
+              <p>
+                Hey, I am Samridh. If being born in the foothills of the
+                Himalayas has taught me one thing, it is how much of a role
+                beauty has in inculcating creativity in a person deeply affected
+                by art.
+              </p>
+              <p>
+                I feel I am a victim of the vicious beauty of the Himalayas, and
+                I am sharing my work, and whatever I can do and feel is right,
+                to express what is trying to find an outlet in me.
+              </p>
+              <p>I&apos;ll be sharing some things I&apos;ve created.</p>
+            </div>
           </div>
 
-          <dl className="mt-12 divide-y divide-line border-y border-line">
-            {stack.map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[6rem_1fr] gap-4 py-4">
-                <dt className="label pt-1">{k}</dt>
-                <dd>{v}</dd>
-              </div>
-            ))}
-          </dl>
+          <div>
+            <h3 className="label">Skills</h3>
+            <ul className="mt-3 grid grid-cols-2 border-t border-line font-geist-mono text-xs sm:grid-cols-4 md:text-sm">
+              {skills.map((s) => (
+                <li
+                  key={s.name}
+                  className="flex min-w-0 items-center gap-2.5 border-b border-line py-2"
+                >
+                  {/* single-colour icon: the SVG is a mask, filled with ink */}
+                  <span
+                    aria-hidden
+                    className="size-4 shrink-0 bg-ink"
+                    style={
+                      s.icon
+                        ? { mask: `url(${s.icon}) center / contain no-repeat` }
+                        : { visibility: "hidden" }
+                    }
+                  />
+                  {s.name}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </section>

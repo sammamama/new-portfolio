@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "design-critique": {
+      "source": "anthropics/knowledge-work-plugins",
+      "commit": "5e504ae11498f2b8daa30d86b7dab97b2ecd8092",
+      "sourceType": "github",
+      "skillPath": "design/skills/design-critique/SKILL.md",
+      "computedHash": "b9647396db0c7a2208519ae3e8313646705aef4b9a2ddab82088b54fe2404f05"
+    }
+  }
+}

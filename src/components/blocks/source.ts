@@ -1,15 +1,16 @@
 /** Loads the reference painting + its data map, and frames it in the hero. */
 
 export type Sources = {
-  img: ImageData; // painting, RGBA, sky transparent
+  img: ImageBitmap; // painting, RGBA over paper (baked), sky transparent, straight alpha; uploaded as is
   depth: ImageData; // R = depth, G = water mask, B = foreground mask
   aspect: number;
 };
 
 export type Fit = { x: number; y: number; w: number; h: number };
 
-const IMG_URL = "/meadow/meadow.webp";
-const DEPTH_URL = "/meadow/depth.png";
+// /meadow/* is served with a long immutable cache (next.config.ts): bump the version when an asset changes
+export const IMG_URL = "/meadow/meadow.v2.webp";
+export const DEPTH_URL = "/meadow/depth.png?v=2";
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -31,8 +32,13 @@ function pixels(img: HTMLImageElement) {
 }
 
 export async function loadSources(): Promise<Sources> {
+  // both are preloaded from the page head (Hero), so these usually resolve from memory
   const [img, depth] = await Promise.all([loadImage(IMG_URL), loadImage(DEPTH_URL)]);
-  return { img: pixels(img), depth: pixels(depth), aspect: img.width / img.height };
+  // decoded off the main thread, alpha kept straight so the paper colour under the transparent sky
+  // survives the upload (a premultiplied decode would turn it black)
+  const bitmap = await createImageBitmap(img, { premultiplyAlpha: "none" });
+  // only the data map is read on the CPU (lake hit tests for the ripples)
+  return { img: bitmap, depth: pixels(depth), aspect: bitmap.width / bitmap.height };
 }
 
 /**

@@ -43,9 +43,6 @@ uniform float uTime;
 uniform float uIntro;
 uniform float uDpr;
 uniform vec2 uPar;      // parallax, device px
-uniform vec2 uMouse;    // device px, top-left origin
-uniform float uPush;    // 0..1, eased: how much the flowers under the cursor spread
-uniform float uRadius;  // device px
 uniform vec4 uRip[${MAX_RIPPLES}];  // x, y (device px), start time, amplitude
 
 out vec4 outColor;
@@ -99,16 +96,6 @@ void main() {
     float wave = sin((dist - front) * 0.18) * ring;
     q += normalize(d + 1e-4) * wave * 9.0 * uDpr * water;
     crest = max(crest, max(wave, 0.0) * water);
-  }
-
-  // flowers spread apart around the cursor: a soft lens that swells the blooms outward,
-  // with a little per-cell scatter; the lake is left to its ripples
-  vec2 dm2 = c - uMouse;
-  float rr = 1.0 - smoothstep(0.0, uRadius, length(dm2 * vec2(1.0, 1.2)));
-  float spread = uPush * rr * rr * (1.0 - water);
-  if (spread > 0.001) {
-    q = uMouse + (q - uMouse) * (1.0 - 0.6 * spread);
-    q += (vec2(h, h2) - 0.5) * uCell * 2.5 * spread;
   }
 
   // four sub-samples per cell: the cell's own light and dark colours (ANSI-art style fg / bg)
@@ -177,7 +164,7 @@ function compile(gl: WebGL2RenderingContext, type: number, src: string) {
   return s;
 }
 
-function texture(gl: WebGL2RenderingContext, data: ImageData, mips: boolean) {
+function texture(gl: WebGL2RenderingContext, data: TexImageSource, mips: boolean) {
   const t = gl.createTexture()!;
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
@@ -207,18 +194,13 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
   gl.useProgram(prog);
   const vao = gl.createVertexArray()!;
 
-  const names = ["tImg", "tDepth", "uRes", "uCell", "uUnit", "uFit", "uLod", "uTime", "uIntro", "uDpr", "uPar", "uMouse", "uPush", "uRadius", "uRip"] as const;
+  const names = ["tImg", "tDepth", "uRes", "uCell", "uUnit", "uFit", "uLod", "uTime", "uIntro", "uDpr", "uPar", "uRip"] as const;
   const U = Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(prog, n)])) as Record<(typeof names)[number], WebGLUniformLocation | null>;
 
-  // flatten the transparent sky onto paper first, so mip levels don't bleed black into the skyline
-  const flat = new ImageData(new Uint8ClampedArray(src.img.data), src.img.width, src.img.height);
-  const paper = [251, 251, 248];
-  for (let i = 0; i < flat.data.length; i += 4) {
-    const a = flat.data[i + 3] / 255;
-    for (let ch = 0; ch < 3; ch++) flat.data[i + ch] = flat.data[i + ch] * a + paper[ch] * (1 - a);
-  }
+  // the painting arrives already blended over paper (baked by prep-meadow.py), so mip levels
+  // don't bleed black into the skyline; it goes straight from the decoded image to the GPU
   gl.activeTexture(gl.TEXTURE0);
-  const imgTex = texture(gl, flat, true);
+  const imgTex = texture(gl, src.img, true);
   gl.activeTexture(gl.TEXTURE1);
   const depthTex = texture(gl, src.depth, false);
   gl.uniform1i(U.tImg, 0);
@@ -236,7 +218,6 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
   let lastRipple = { x: -1e4, y: -1e4 };
 
   const parallax = { x: 0, y: 0, tx: 0, ty: 0 };
-  const mouse = { x: -1e4, y: -1e4, tx: -1e4, ty: -1e4, push: 0, pushT: 0 };
   const t0 = performance.now();
   let lastT = t0;
   let introStart = -1;
@@ -249,31 +230,6 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
     const iy = Math.floor(((y - fit.y) / fit.h) * d.height);
     if (ix < 0 || iy < 0 || ix >= d.width || iy >= d.height) return 0;
     return d.data[(iy * d.width + ix) * 4 + 1] / 255;
-  };
-
-  /** Is the cursor over blooms? Saturated warm / pink paint, averaged over a small patch. */
-  const flowersAt = (x: number, y: number) => {
-    const im = src.img;
-    const cx = Math.floor(((x - fit.x) / fit.w) * im.width);
-    const cy = Math.floor(((y - fit.y) / fit.h) * im.height);
-    if (cx < 0 || cy < 0 || cx >= im.width || cy >= im.height) return 0;
-    if (waterAt(x, y) > 0.5) return 0;
-    let hits = 0;
-    let total = 0;
-    for (let oy = -6; oy <= 6; oy += 3)
-      for (let ox = -6; ox <= 6; ox += 3) {
-        const px = Math.min(im.width - 1, Math.max(0, cx + ox));
-        const py = Math.min(im.height - 1, Math.max(0, cy + oy));
-        const k = (py * im.width + px) * 4;
-        const r = im.data[k], g = im.data[k + 1], b = im.data[k + 2], a = im.data[k + 3];
-        total++;
-        if (a < 128) continue;
-        const mx = Math.max(r, g, b);
-        const mn = Math.min(r, g, b);
-        const sat = mx ? (mx - mn) / mx : 0;
-        if (mx > 150 && sat > 0.45 && r >= Math.max(g, b) * 0.95) hits++;
-      }
-    return hits / total;
   };
 
   function addRipple(x: number, y: number, amp: number) {
@@ -293,7 +249,6 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
     const imgPxPerCell = (Math.max(cw, ch) * src.img.width) / (fit.w * dpr);
     gl!.uniform1f(U.uLod, Math.max(0, Math.log2(imgPxPerCell * 0.5)));
     gl!.uniform1f(U.uDpr, dpr);
-    gl!.uniform1f(U.uRadius, (narrow ? 70 : 110) * dpr);
   }
 
   function draw(t: number, intro: number) {
@@ -304,8 +259,6 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
     gl!.uniform1f(U.uTime, t);
     gl!.uniform1f(U.uIntro, intro);
     gl!.uniform2f(U.uPar, parallax.x * dpr, parallax.y * dpr);
-    gl!.uniform2f(U.uMouse, mouse.x * dpr, mouse.y * dpr);
-    gl!.uniform1f(U.uPush, mouse.push);
     gl!.uniform4fv(U.uRip, ripples);
     gl!.drawArrays(gl!.TRIANGLES, 0, 3);
   }
@@ -317,15 +270,9 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
     const ease = 1 - Math.pow(1 - 0.05, k);
     parallax.x += (parallax.tx - parallax.x) * ease;
     parallax.y += (parallax.ty - parallax.y) * ease;
-    const follow = 1 - Math.pow(1 - 0.2, k);
-    mouse.x += (mouse.tx - mouse.x) * follow;
-    mouse.y += (mouse.ty - mouse.y) * follow;
-    // springy: opens a little quicker than it closes
-    const rate = mouse.pushT > mouse.push ? 0.12 : 0.06;
-    mouse.push += (mouse.pushT - mouse.push) * (1 - Math.pow(1 - rate, k));
     const t = now();
     if (introStart < 0) introStart = t;
-    draw(t, (t - introStart) / 1.3);
+    draw(t, (t - introStart) / 0.7); // full blocks after ~1s
     raf = requestAnimationFrame(frame);
   }
 
@@ -340,13 +287,6 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
       setStatic();
     },
     pointer(x, y) {
-      if (mouse.push < 0.01) {
-        mouse.x = x;
-        mouse.y = y;
-      }
-      mouse.tx = x;
-      mouse.ty = y;
-      mouse.pushT = flowersAt(x, y) > 0.2 ? 1 : 0;
       parallax.tx = -((x / cssW) * 2 - 1) * 24;
       parallax.ty = -((y / cssH) * 2 - 1) * 9;
       // only the lake reacts: a ripple every ~34px of travel over the water
@@ -356,7 +296,6 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
       }
     },
     leave() {
-      mouse.pushT = 0;
       parallax.tx = 0;
       parallax.ty = 0;
     },
@@ -376,6 +315,7 @@ export function createEngine(canvas: HTMLCanvasElement, src: Sources): Engine {
       cancelAnimationFrame(raf);
       raf = 0;
       gl.deleteTexture(imgTex);
+      src.img.close();
       gl.deleteTexture(depthTex);
       gl.deleteVertexArray(vao);
       gl.deleteProgram(prog);

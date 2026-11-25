@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { HERO_SEEN_KEY } from "@/components/heroReveal";
 import { Caveat, Geist_Mono, Instrument_Serif, JetBrains_Mono, Newsreader } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -48,6 +49,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // share images and other URL metadata resolve against the real domain
+  metadataBase: new URL("https://samridh-sharma.com"),
   title: "Sam Sharma — full-stack developer",
   description:
     "Samridh (Sam) Sharma — full-stack developer building calm, crafted web apps with Next.js, React and TypeScript.",
@@ -55,10 +58,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning: the head script below may add data-hero-cached before React hydrates
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${hand.variable} ${pixel.variable} ${display.variable} ${serif.variable} ${mono.variable} ${geistMono.variable}`}
     >
+      <head>
+        {/* Runs before first paint: if the hero has fully loaded here before, its assets are cached,
+            so skip the pixel loader and the build-in (see HeroLoader). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("${HERO_SEEN_KEY}"))document.documentElement.setAttribute("data-hero-cached","")}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-svh">{children}</body>
     </html>
   );

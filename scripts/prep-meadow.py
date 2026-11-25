@@ -2,7 +2,8 @@
 Prepare the hero meadow source from the reference painting.
 
 Outputs (into OUT):
-  meadow.webp  RGBA colour, sky made transparent, watermark inpainted
+  meadow.v2.webp  RGBA colour over paper (alpha kept), sky made transparent, watermark inpainted
+                  (bump the version in the name and in blocks/source.ts when the painting changes)
   depth.png    R = depth (0 far .. 255 near), G = water mask, B = foreground mask, A = 255
 Debug images go to DBG.
 """
@@ -93,7 +94,13 @@ alpha = cv2.GaussianBlur(alpha, (0, 0), 1.2)
 rgba = np.dstack([img, (alpha * 255).astype(np.uint8)])
 h_out = round(H * W_OUT / W)
 rgba_s = cv2.resize(rgba, (W_OUT, h_out), interpolation=cv2.INTER_AREA)
-cv2.imwrite(f"{OUT}/meadow.webp", rgba_s, [cv2.IMWRITE_WEBP_QUALITY, 86])
+# bake the colour over paper (alpha kept), so mip levels never bleed black into the skyline and the
+# browser doesn't have to do it per pixel on every load: rgb = rgb * a + paper * (1 - a)
+PAPER_BGR = np.array([248, 251, 251], np.float32)  # --paper #FBFBF8
+a = rgba_s[..., 3:4].astype(np.float32) / 255
+rgba_s[..., :3] = np.clip(rgba_s[..., :3].astype(np.float32) * a + PAPER_BGR * (1 - a), 0, 255).astype(np.uint8)
+# versioned name: /meadow/* is served with a long immutable cache, so a changed painting needs a new name
+cv2.imwrite(f"{OUT}/meadow.v2.webp", rgba_s, [cv2.IMWRITE_WEBP_QUALITY, 86])
 
 dw, dh = W_OUT // 2, h_out // 2
 data = np.dstack(

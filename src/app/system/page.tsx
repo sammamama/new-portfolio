@@ -87,16 +87,18 @@ export default function System() {
       <h2 className="mt-20 border-b border-ink pb-3 font-display text-3xl">Rules</h2>
       <ul className="mt-6 max-w-[70ch] list-disc space-y-2 pl-5 text-ink-soft">
         <li>Pixel pastoral: a paper sky over a pixel meadow, with editorial type floating in between.</li>
-        <li>Pixels are for surfaces (meadow, clouds, ornaments, particles), never for reading text.</li>
+        <li>Pixels are for surfaces (meadow, clouds, ornaments, particles), never for reading text. Exception: the work menu is a game UI and uses PP Mondwest and pixel frames.</li>
         <li>Tarn is the only accent in UI — links, italic emphasis, focus, hover states.</li>
-        <li>Flower colours (marigold, pollen, bloom, moss) stay inside the meadow; tarn-mist clouds stay in the sky.</li>
-        <li>The hero is a diorama: clouds, meadow, name, subtitle and one front cloud, each drifting at its own depth.</li>
+        <li>Flower colours (marigold, pollen, bloom, blush, moss) stay inside the meadow, except the pink butterfly on the hero name; tarn-mist clouds stay in the sky.</li>
+        <li>The hero is a diorama: clouds, meadow, name, subtitle and one front cloud, each drifting at its own depth. Two pixel butterflies sit on the name and hop to new letters when it is hovered.</li>
+        <li>Loading is pixel too: a row of meadow cells pulses ░ ▒ ▓ █, dissolves, then every hero layer builds in through the same shade masks.</li>
         <li>
           The meadow is the reference painting drawn in shade blocks{" "}
-          <span className="font-mono text-ink">░ ▒ ▓ █</span>. Hovering the lake makes it ripple, hovering the flowers
-          makes them spread, and the role line scatters into particles. Everything springs back.
+          <span className="font-mono text-ink">░ ▒ ▓ █</span>. Hovering the lake makes it ripple, and the role line
+          scatters into particles. Everything springs back.
         </li>
         <li>Instrument Serif has one weight: no bold serif. Italic is the signature.</li>
+        <li>Work is an 80s game select screen: pixel-framed, a PP Mondwest menu with a blinking pixel ▶ cursor and a tarn highlight bar, and a preview whose screenshot loads as shade blocks, then resolves. The menu only selects; VISIT / CODE open links.</li>
         <li>Motion is slow and springy; all of it switches off under reduced-motion.</li>
       </ul>
     </main>

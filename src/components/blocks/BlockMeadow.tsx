@@ -1,11 +1,29 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Engine } from "./engine";
+import { preload } from "react-dom";
+import { markMeadowReady, onReveal } from "../heroReveal";
+// static, not lazy: the engine ships with the page instead of a second round trip after hydration
+import { type Engine, createEngine } from "./engine";
+import { DEPTH_URL, IMG_URL, loadSources } from "./source";
+
+// the meadow starts building in when the hero title is a quarter through its own build-in (0.6s)
+const TITLE_QUARTER_MS = 150;
+
+/** ms until the title's build-in is a quarter done: it may already be running (cached pages start it in CSS) */
+function untilTitleQuarter() {
+  const wrap = document.querySelector("#top h1")?.closest(".pixel-in");
+  const anim = wrap?.getAnimations().find((a) => (a as CSSAnimation).animationName === "pixel-in");
+  const t = anim?.currentTime;
+  return typeof t === "number" ? Math.max(0, TITLE_QUARTER_MS - t) : TITLE_QUARTER_MS;
+}
 
 /** Hero meadow: the reference painting drawn in shade blocks (░ ▒ ▓ █), WebGL2. */
 export default function BlockMeadow({ className = "" }: { className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  // <link rel="preload"> in the head: the painting downloads alongside the page's JS, not after it
+  preload(IMG_URL, { as: "image", fetchPriority: "high" });
+  preload(DEPTH_URL, { as: "image" });
 
   useEffect(() => {
     const canvas = ref.current;
@@ -40,27 +58,42 @@ export default function BlockMeadow({ className = "" }: { className?: string }) 
       else engine.stop();
     });
 
+    let unReveal = () => {};
+    let startTimer = 0;
     (async () => {
-      const probe = document.createElement("canvas").getContext("webgl2");
-      if (!probe) return; // no WebGL2: the sky stays empty, the page still reads fine
-      const [{ loadSources }, { createEngine }] = await Promise.all([import("./source"), import("./engine")]);
-      const src = await loadSources();
-      if (cancelled) return;
-      engine = createEngine(canvas, src);
-      fit();
-      ro.observe(canvas);
-      if (reduce) {
-        engine.renderOnce();
+      try {
+        const src = await loadSources(); // preloaded from the page head, usually already in memory
+        if (cancelled) return;
+        engine = createEngine(canvas, src); // throws without WebGL2: the sky stays empty, the page reads fine
+        fit();
+        ro.observe(canvas);
+      } catch {
+        // a failed load must not hold the loader up; the sky just stays empty
         return;
+      } finally {
+        if (!cancelled) markMeadowReady();
       }
-      io.observe(canvas);
-      engine.start();
-      window.addEventListener("pointermove", onMove, { passive: true });
-      document.documentElement.addEventListener("pointerleave", onLeave);
+      // nothing is drawn before the reveal; then the intro starts once the title is a quarter in
+      unReveal = onReveal(() => {
+        if (!engine || cancelled) return;
+        if (reduce) {
+          engine.renderOnce();
+          return;
+        }
+        startTimer = window.setTimeout(() => {
+          if (!engine || cancelled) return;
+          io.observe(canvas);
+          engine.start();
+          window.addEventListener("pointermove", onMove, { passive: true });
+          document.documentElement.addEventListener("pointerleave", onLeave);
+        }, untilTitleQuarter());
+      });
     })();
 
     return () => {
       cancelled = true;
+      unReveal();
+      window.clearTimeout(startTimer);
       window.clearTimeout(timer);
       ro.disconnect();
       io.disconnect();

@@ -2,7 +2,7 @@
 
 Personal portfolio of Samridh (Sam) Sharma: design specialist and fullstack generalist.
 
-**Pixel pastoral:** a quiet paper sky over a pixel meadow drawn in shade blocks (`░ ▒ ▓ █`), with editorial type floating in between. Hover the lake and it ripples, hover the flowers and they spread, hover the role line and it scatters into particles. Clouds drift by, and one of them crosses in front of the name.
+**Pixel pastoral:** a quiet paper sky over a pixel meadow drawn in shade blocks (`░ ▒ ▓ █`), with editorial type floating in between. Hover the lake and it ripples, hover the name and two pixel butterflies flutter to new letters, hover the role line and it scatters into particles. Clouds drift by, evenly spaced. On load, a pixel loader dissolves and the whole hero builds in through the meadow's shade blocks.
 
 Built with Next.js 16 (App Router), React 19, TypeScript, Tailwind v4 and WebGL2. Deployed on Vercel.
 
